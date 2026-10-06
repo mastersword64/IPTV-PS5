@@ -1,9 +1,5 @@
-Pointers bundled with the app
+The pointer files in this folder (Arrow, Arrow black, Classic white, Classic black) were drawn for
+this app and are covered by the project's own licence.
 
-Arrow, Arrow black, Classic white, Classic black: drawn for this app.
-
-Oxygen white: the "Normal Select" cursor from the Oxygen-White cursor set (the KDE4 Oxygen cursors
-as used in openSUSE), packaged by Erik (http://www.rw-designer.com/cursor-set/opensuse-oxygen).
-Licence: Creative Commons Attribution-ShareAlike.
-
-Minecraft Sword: supplied by the owner of this build.
+More pointers can be added without rebuilding: upload .cur, .ani, .ico or .png files to
+/data/iptv/pointers/ on the console and they appear in Settings > Pointer.
