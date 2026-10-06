@@ -7,7 +7,7 @@ A native IPTV player for the PS5, modelled on IPTVnator. It plays playlists you 
 **Playlists**
 - M3U and M3U8 playlists from a web address or a file, Xtream Codes accounts, and Stalker / Ministra portals
 - Several playlists side by side, each with its own favorites and history
-- Add playlists from a phone or computer: the console shows a QR code and serves a small web page for typing addresses, sending an M3U file, and saving or restoring a backup
+- **Remote setup:** a local web page served by the console itself, opened from a phone or computer by scanning a QR code (see below)
 
 **Live TV**
 - Groups and channels, with groups gathered by country (UK, US, AR and so on)
@@ -36,6 +36,20 @@ A native IPTV player for the PS5, modelled on IPTVnator. It plays playlists you 
 - Profiles, each with its own favorites, history and hidden groups
 - An on-screen pointer driven by the left stick, with adjustable speed, size and shape, and custom pointer files
 - Saved copies of category lists, so the app opens at once and refreshes in the background
+
+## Remote setup (local web interface)
+
+Typing long addresses with a controller is slow, so the console can serve a small web page on your home network.
+
+1. Open **Settings > Remote** on the console. It shows a QR code and an address such as `http://192.168.1.20:8080`.
+2. Scan the code with a phone, or type the address into any browser on the same network.
+3. On the page you can:
+   - **Add a playlist** with a real keyboard: an M3U web address, an Xtream Codes account, or a Stalker / Ministra portal with its MAC address
+   - **Send an M3U file** from the device to the console
+   - **Save a backup** of playlists, settings, favorites, profiles, hidden groups and watch history as one file, and **restore** it later
+   - See the playlists already on the console
+
+The page is served only while the Remote tab is open, and only to devices on the same network. It has no password, so anyone on that network can use it during that time.
 
 ## Build and deploy
 
