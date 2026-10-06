@@ -1,0 +1,8 @@
+build/
+*.zip
+*.o
+*.err
+font.ttf
+font-bold.ttf
+playlist.m3u
+.DS_Store
