@@ -29,9 +29,3 @@ make -C build/title deploy PS5_HOST=<console address>
 ## On the console
 
 Everything the app keeps is in `/data/iptv/`: playlists, settings, favorites and history (per playlist and per profile), `themes/` for extra colour themes, `pointers/` for custom pointers, `cache/` for saved copies, and `iptv-log.txt`.
-
-## Credits
-
-- Modelled on [IPTVnator](https://github.com/4gray/iptvnator).
-- The "Oxygen white" pointer is from the KDE Oxygen cursor set (CC BY-SA).
-- This app plays playlists you supply. It includes no channels or content.
