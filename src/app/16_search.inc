@@ -108,6 +108,26 @@ static void openSearchKeyboard()
 	openKeyboard(&g_searchText, 40, false, "Search");
 }
 
+// Takes in what the server found, once it has answered.
+static void pumpSearch()
+{
+	std::lock_guard<std::mutex> lock(g_searchMutex);
+	if (!g_searchArrived)
+		return;
+	g_searchArrived = false;
+	for (int media = 0; media < 3; media++)
+	{
+		for (const Channel& channel : g_searchFound[media])
+			searchAdd(media, channel);
+		g_searchFound[media].clear();
+	}
+	g_searchState = 2;
+	int total = 0;
+	for (const HomeRow& row : g_searchRows)
+		total += (int)row.items.size();
+	logLine("search: %d results", total);
+}
+
 static void drawSearch()
 {
 	// typed something new?
@@ -117,24 +137,7 @@ static void drawSearch()
 		if (trim(g_searchText) != g_searchDone)
 			startSearch();
 	}
-	{
-		std::lock_guard<std::mutex> lock(g_searchMutex);
-		if (g_searchArrived)
-		{
-			g_searchArrived = false;
-			for (int media = 0; media < 3; media++)
-			{
-				for (const Channel& channel : g_searchFound[media])
-					searchAdd(media, channel);
-				g_searchFound[media].clear();
-			}
-			g_searchState = 2;
-			int total = 0;
-			for (const HomeRow& row : g_searchRows)
-				total += (int)row.items.size();
-			logLine("search: %d results", total);
-		}
-	}
+	pumpSearch();
 	const float keepScale = gfx::radiusScale();
 	if (!g_searchRows.empty())
 	{

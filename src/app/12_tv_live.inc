@@ -98,7 +98,10 @@ static void drawTvLive(const std::string& status)
 		gfx::bold(true);
 		centredIn(700, 1220, 470, 34, kTvSoft, "Choose a channel");
 		gfx::bold(false);
-		centredIn(700, 1220, 524, 22, kTvDim, g_autoPreview ? "Rest on one for a moment and it starts playing here" : "Press \xE2\x9C\x95 on a channel to play it here");
+		if (g_nowOn && g_nowTab == kRadioTab)
+			centredIn(700, 1220, 524, 22, kTvDim, "Radio is playing (" + g_now.name + ").  Press \xE2\x9C\x95 on a channel to watch it instead");
+		else
+			centredIn(700, 1220, 524, 22, kTvDim, g_autoPreview ? "Rest on one for a moment and it starts playing here" : "Press \xE2\x9C\x95 on a channel to play it here");
 	}
 	// shading under the list, and along the bottom for the programme card
 	for (int i = 0; i < 50; i++)
@@ -108,7 +111,7 @@ static void drawTvLive(const std::string& status)
 	}
 	const float px = 92, pw = 600;
 	gfx::rect(px, 0, pw, 1080, 0x080a12d8);
-	if (!status.empty())
+	if (!status.empty() && playing)
 	{
 		const float w = gfx::textWidth(30, status) + 80;
 		gfx::roundRect(1300 - w / 2, 480, w, 72, 36, 0x000000b8);
@@ -367,7 +370,8 @@ static void drawTvLive(const std::string& status)
 		restingOn = resting;
 		restingSince = nowSeconds();
 	}
-	else if (g_autoPreview && resting >= 0 && resting != g_playing && nowSeconds() - restingSince > 1.0 && !isSeriesItem(g_playlist.channels[(size_t)resting].url))
+	else if (g_autoPreview && resting >= 0 && resting != g_playing && nowSeconds() - restingSince > 1.0 && !isSeriesItem(g_playlist.channels[(size_t)resting].url)
+		&& !(g_nowOn && g_nowTab == kRadioTab))         // (a radio station playing is not cut off just by looking through the channels)
 		startChannel(resting);
 
 	drawTvRail();

@@ -295,19 +295,19 @@ static void drawTopBar()
 static std::string clockNow();
 static void openGrid();
 
-// Home, Live TV, Movies, Series, Account
+// Home, Search, Live TV, Movies, Series, Account, Radio
 static void drawTabs()
 {
 	for (int place = 0; place < kTabCount; place++)
 	{
 		const int tab = kTabOrder[place];
-		const float x = 96 + (float)place * 202, w = 190;
+		const float x = 96 + (float)place * 184, w = 174;
 		const bool current = tab == g_tab, hover = hovering(x, 86, w, 48);
 		gfx::panel(x, 86, w, 48, 24, current || hover ? 2.0f : 1.0f, current || hover ? kBorder : kLine, current ? kSelected : kChip);
 		centredTight(x, w, 97, 23, current ? kAccent : kText, kTabName[tab]);
 		clickable(x, 86, w, 48, [tab] { switchTab(tab); });
 	}
-	gfx::text(96 + (float)kTabCount * 202 + 14, 100, 20, kMuted, "L2 / R2  Switch");
+	gfx::text(96 + (float)kTabCount * 184 + 10, 100, 20, kMuted, "L2 / R2  Switch");
 	if (g_tab == 0 && T->state == 2)
 	{
 		// the programme guide grid for the list on show

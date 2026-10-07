@@ -29,6 +29,8 @@ namespace player
 	State state();
 	std::string message();                        // why it failed, when it did
 	bool hasVideo();
+	// What a radio station says is playing ("Artist - Song"), when it says ("" otherwise).
+	std::string streamTitle();
 	// True when a new picture is due; its memory stays valid until the next call or stop().
 	bool nextPicture(Picture& out);
 

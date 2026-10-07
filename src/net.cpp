@@ -191,3 +191,42 @@ bool httpGetQuiet(const std::string& url, std::string& out, size_t limit, long t
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
 	return result == CURLE_OK && status < 400 && !out.empty();
 }
+
+bool httpGetOwn(const std::string& url, std::string& out, std::string& error, const std::string& userAgent, long timeoutSeconds, size_t limit)
+{
+	out.clear();
+	CURL* curl = curl_easy_init();
+	if (!curl)
+	{
+		error = "the download library could not start";
+		return false;
+	}
+	Limited limited{ &out, limit };
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
+	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 6L);
+	curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");   // (whatever packing this build of the library can undo)
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeoutSeconds);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, onLimitedData);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &limited);
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+	const CURLcode result = curl_easy_perform(curl);
+	long status = 0;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+	curl_easy_cleanup(curl);
+	if (result != CURLE_OK)
+	{
+		error = curl_easy_strerror(result);
+		return false;
+	}
+	if (status >= 400)
+	{
+		error = "the server answered with error " + std::to_string(status);
+		return false;
+	}
+	return true;
+}

@@ -113,6 +113,7 @@ namespace
 
 		player::State state = player::OPENING;
 		std::string message;
+		std::string streamTitle;                            // radio: the song, as the station announces it
 
 		~Session()
 		{
@@ -964,6 +965,14 @@ namespace
 					logLine("player: the stream stopped: %s", errorText(result).c_str());
 				break;
 			}
+			if (!vdec && (s->fmt->event_flags & AVFMT_EVENT_FLAG_METADATA_UPDATED))
+			{
+				// a radio station announcing the song now playing
+				s->fmt->event_flags &= ~AVFMT_EVENT_FLAG_METADATA_UPDATED;
+				const AVDictionaryEntry* title = av_dict_get(s->fmt->metadata, "StreamTitle", nullptr, 0);
+				std::lock_guard<std::mutex> lock(s->m);
+				s->streamTitle = title && title->value ? title->value : "";
+			}
 			std::deque<AVPacket*>* queue = nullptr;
 			if (vdec && packet->stream_index == s->vidx)
 				queue = &s->vq;
@@ -1248,6 +1257,15 @@ std::string player::message()
 		return "";
 	std::lock_guard<std::mutex> lock(s->m);
 	return s->message;
+}
+
+std::string player::streamTitle()
+{
+	const SessionPtr s = current();
+	if (!s)
+		return "";
+	std::lock_guard<std::mutex> lock(s->m);
+	return s->streamTitle;
 }
 
 bool player::hasVideo()

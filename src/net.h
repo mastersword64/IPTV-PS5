@@ -16,3 +16,6 @@ int httpEpoch();
 // gives up quickly, and it refuses anything larger than `limit` bytes.
 // `lane` (0 to 3) picks one of four separate connections, so up to four can run at once.
 bool httpGetQuiet(const std::string& url, std::string& out, size_t limit, long timeoutSeconds, int lane = 0);
+// A download on a connection of its own, apart from the playlist's: it is not stopped by
+// httpCancel() and never waits behind a portal. Used for the radio directory.
+bool httpGetOwn(const std::string& url, std::string& out, std::string& error, const std::string& userAgent, long timeoutSeconds, size_t limit);

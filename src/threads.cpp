@@ -22,14 +22,19 @@ namespace
 		Start* start = static_cast<Start*>(argument);
 		// A stack for the crash handler, so that a crash on this thread (even
 		// running out of stack) still leaves a record.
+		void* crashStack = nullptr;
 		if (sigaltstack != nullptr)
 		{
 			stack_t alternate;
 			memset(&alternate, 0, sizeof(alternate));
 			alternate.ss_size = 64 * 1024;
-			alternate.ss_sp = static_cast<decltype(alternate.ss_sp)>(malloc(alternate.ss_size));
-			if (alternate.ss_sp)
-				sigaltstack(&alternate, nullptr);
+			crashStack = malloc(alternate.ss_size);
+			alternate.ss_sp = static_cast<decltype(alternate.ss_sp)>(crashStack);
+			if (crashStack && sigaltstack(&alternate, nullptr) != 0)
+			{
+				free(crashStack);
+				crashStack = nullptr;
+			}
 		}
 		try
 		{
@@ -44,6 +49,15 @@ namespace
 			logLine("thread %s: stopped by an unknown error", start->name);
 		}
 		delete start;
+		if (crashStack)
+		{
+			// the thread is over: give its crash stack back (short-lived threads are started often)
+			stack_t off;
+			memset(&off, 0, sizeof(off));
+			off.ss_flags = SS_DISABLE;
+			if (sigaltstack(&off, nullptr) == 0)
+				free(crashStack);
+		}
 		return nullptr;
 	}
 }

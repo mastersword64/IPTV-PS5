@@ -1,14 +1,18 @@
 #include "webadd.h"
 #include "log.h"
 #include "threads.h"
+#include "webpage.h"
 
 #include <arpa/inet.h>
 #include <atomic>
+#include <condition_variable>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <dirent.h>
+#include <cerrno>
 #include <fcntl.h>
 #include <mutex>
 #include <netinet/in.h>
@@ -30,27 +34,18 @@
 
 namespace
 {
+	// (never destroyed: the worker threads may still be using them as the app closes)
 	std::mutex& g_mutex = *new std::mutex;
-	std::atomic<bool> g_run{ false }, g_alive{ false };
-	std::atomic<int> g_visits{ 0 };
-	int g_listen = -1;
-	std::string g_dataDir, g_address, g_problem;
+	std::condition_variable& g_answered = *new std::condition_variable;
+	std::atomic<bool> g_run{ false };
+	std::atomic<int> g_alive{ 0 }, g_visits{ 0 };
+	const int kWorkers = 5;                                 // how many requests can be dealt with at once
+	std::string g_dataDir, g_address, g_problem, g_key;
+	std::string g_status = "{}";
 	std::deque<web::Request> g_requests;
-	std::vector<std::string> g_playlists;
-
-	std::string escapeHtml(const std::string& text)
-	{
-		std::string out;
-		for (const char c : text)
-		{
-			if (c == '<') out += "&lt;";
-			else if (c == '>') out += "&gt;";
-			else if (c == '&') out += "&amp;";
-			else if (c == '"') out += "&quot;";
-			else out += c;
-		}
-		return out;
-	}
+	std::deque<web::Query> g_queries;
+	std::map<int, std::string> g_answers;
+	int g_nextQuery = 1;
 
 	std::string unescape(const std::string& text)
 	{
@@ -91,7 +86,7 @@ namespace
 	// The files that make up the viewer's setup: playlists, settings, favourites, history, hidden things.
 	bool belongsInBackup(const std::string& name)
 	{
-		static const char* const starts[] = { "playlists.txt", "settings.txt", "theme.txt", "active.txt", "profiles.txt", "favourites", "recent", "resume", "hidden", "watched", "last" };
+		static const char* const starts[] = { "playlists.txt", "settings.txt", "theme.txt", "active.txt", "profiles.txt", "favourites", "recent", "resume", "hidden", "watched", "last", "radio-" };
 		if (name.size() < 5 || name.compare(name.size() - 4, 4, ".txt") != 0 || name.find("log") != std::string::npos)
 			return false;
 		for (const char* start : starts)
@@ -127,75 +122,82 @@ namespace
 		return out;
 	}
 
-	const char* const kPage = R"HTML(<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IPTV on PS5</title><style>
-body{font-family:system-ui,sans-serif;background:#0b0e14;color:#f1f3f8;margin:0;padding:20px;max-width:640px;margin:auto}
-h1{font-size:24px}h2{font-size:18px;margin:26px 0 8px;color:#9fb7ff}
-.card{background:#171b28;border:1px solid #2a3044;border-radius:14px;padding:16px;margin:12px 0}
-label{display:block;font-size:13px;color:#8b93a7;margin:10px 0 4px}
-input,select,button{width:100%;box-sizing:border-box;font-size:16px;padding:12px;border-radius:10px;border:1px solid #2a3044;background:#10131a;color:#f1f3f8}
-button{background:#6f9cf5;color:#0b0e14;border:0;font-weight:600;margin-top:14px}
-button.plain{background:#232a3c;color:#f1f3f8}
-#note{position:sticky;top:8px;background:#1e2a47;border-radius:10px;padding:12px;display:none;margin-bottom:8px}
-li{margin:4px 0}.hint{font-size:13px;color:#8b93a7}
-</style></head><body>
-<h1>IPTV on PS5</h1><div id="note"></div>
-<div class="card"><h2 style="margin-top:0">Playlists on the console</h2><ul>%PLAYLISTS%</ul></div>
-<div class="card"><h2 style="margin-top:0">Add a playlist</h2>
-<label>Kind</label><select id="type" onchange="kind()"><option value="url">M3U web address</option><option value="xtream">Xtream Codes account</option><option value="stalker">Stalker / Ministra portal</option></select>
-<label>Name (optional)</label><input id="name" placeholder="My TV">
-<label id="la">Address of the M3U playlist</label><input id="a" placeholder="http://example.com/list.m3u" autocapitalize="off" autocorrect="off">
-<div id="xb"><label id="lb">Username</label><input id="b" autocapitalize="off" autocorrect="off"></div>
-<div id="xc"><label>Password</label><input id="c" autocapitalize="off" autocorrect="off"></div>
-<div id="xm"><label>MAC address (optional)</label><input id="mac" placeholder="00:1A:79:12:34:56" autocapitalize="characters"></div>
-<button onclick="add()">Add to the console</button></div>
-<div class="card"><h2 style="margin-top:0">Send an M3U file</h2><p class="hint">Choose a .m3u or .m3u8 file from this device.</p>
-<input type="file" id="file" accept=".m3u,.m3u8,audio/x-mpegurl,text/plain"><button class="plain" onclick="sendFile()">Send the file</button></div>
-<div class="card"><h2 style="margin-top:0">Backup</h2><p class="hint">Playlists, settings, favorites, hidden groups and watch history, as one file.</p>
-<button class="plain" onclick="location='/backup'">Save a backup to this device</button>
-<label>Restore from a backup file</label><input type="file" id="backup"><button class="plain" onclick="restore()">Restore to the console</button></div>
-<script>
-function note(t){var n=document.getElementById('note');n.textContent=t;n.style.display='block';window.scrollTo(0,0)}
-function v(i){return document.getElementById(i).value.trim()}
-function kind(){var t=v('type');document.getElementById('xb').style.display=t=='url'?'none':'block';
-document.getElementById('xc').style.display=t=='xtream'?'block':'none';document.getElementById('xm').style.display=t=='xtream'?'block':'none';
-document.getElementById('la').textContent=t=='url'?'Address of the M3U playlist':t=='xtream'?'Server address':'Portal address';
-document.getElementById('lb').textContent=t=='stalker'?'MAC address':'Username';
-document.getElementById('a').placeholder=t=='url'?'http://example.com/list.m3u':'http://example.com:8080'}
-function post(u,b,h){return fetch(u,{method:'POST',body:b,headers:h||{}}).then(function(r){return r.text()}).then(note).catch(function(){note('The console did not answer. Is the screen with the code still open?')})}
-function add(){if(!v('a')){note('An address is needed.');return}
-var f=['type','name','a','b','c','mac'].map(function(k){return k+'='+encodeURIComponent(v(k))}).join('&');
-post('/add',f,{'Content-Type':'application/x-www-form-urlencoded'})}
-function sendFile(){var f=document.getElementById('file').files[0];if(!f){note('Choose a file first.');return}
-post('/file?name='+encodeURIComponent(f.name),f)}
-function restore(){var f=document.getElementById('backup').files[0];if(!f){note('Choose a backup file first.');return}
-if(confirm('Replace the playlists, settings and favorites on the console with this backup?'))post('/restore',f)}
-kind()</script></body></html>)HTML";
-
 	void reply(int client, const char* status, const char* type, const std::string& body, const char* extra = "")
 	{
 		char head[512];
 		snprintf(head, sizeof(head), "HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %zu\r\nConnection: close\r\nCache-Control: no-store\r\n%s\r\n", status, type, body.size(), extra);
 		std::string all = head + body;
 		size_t sent = 0;
-		while (sent < all.size())
+		int waited = 0;                                 // milliseconds with nothing accepted
+		while (sent < all.size() && waited < 10000)
 		{
 			const ssize_t n = send(client, all.data() + sent, all.size() - sent, 0);
-			if (n <= 0)
+			if (n > 0)
+			{
+				sent += (size_t)n;
+				waited = 0;
+			}
+			else if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+			{
+				usleep(2000);                           // the phone is not ready for more yet
+				waited += 2;
+			}
+			else
 				break;
-			sent += (size_t)n;
 		}
+	}
+
+	// Reads what has arrived, waiting no longer than `milliseconds` for something to. The socket
+	// itself never waits: the waiting is done here, so it cannot go on longer than intended
+	// whatever the console's system makes of a socket's own time limits.
+	ssize_t receive(int client, char* into, size_t room, int milliseconds)
+	{
+		for (int waited = 0;; waited += 3)
+		{
+			const ssize_t n = recv(client, into, room, 0);
+			if (n >= 0)
+				return n;
+			if ((errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) || waited >= milliseconds || !g_run)
+				return -1;
+			usleep(3000);
+		}
+	}
+
+	// Hands a question to the app and waits for its answer (the app looks once per picture drawn).
+	std::string askApp(const std::string& what, const std::map<std::string, std::string>& fields)
+	{
+		std::unique_lock<std::mutex> lock(g_mutex);
+		if (g_queries.size() > 16)
+			return "{\"err\":\"The console is busy. Try again in a moment.\"}";
+		web::Query query;
+		const int id = query.id = g_nextQuery++;
+		query.what = what;
+		query.fields = fields;
+		g_queries.push_back(std::move(query));
+		const bool answered = g_answered.wait_for(lock, std::chrono::seconds(8), [id] { return g_answers.count(id) != 0 || !g_run; });
+		std::string json = "{\"err\":\"The console did not answer.\"}";
+		if (answered && g_answers.count(id))
+			json = g_answers[id];
+		g_answers.erase(id);
+		for (auto it = g_queries.begin(); it != g_queries.end(); ++it)
+			if (it->id == id)
+			{
+				g_queries.erase(it);                    // never looked at: take the question back
+				break;
+			}
+		return json;
 	}
 
 	void serve(int client)
 	{
-		// the request: a heading, then possibly a body whose length the heading gives
+		// the request: a heading, then possibly a body whose length the heading gives.
+		// (Browsers open spare connections and say nothing on them: those are dropped quickly.)
 		std::string request;
 		char block[8192];
 		size_t headerEnd = std::string::npos, length = 0;
 		for (;;)
 		{
-			const ssize_t n = recv(client, block, sizeof(block), 0);
+			const ssize_t n = receive(client, block, sizeof(block), request.empty() ? 700 : 10000);
 			if (n <= 0)
 				break;
 			request.append(block, (size_t)n);
@@ -222,7 +224,7 @@ kind()</script></body></html>)HTML";
 			if (headerEnd != std::string::npos && request.size() >= headerEnd + 4 + length)
 				break;
 		}
-		if (headerEnd == std::string::npos)
+		if (headerEnd == std::string::npos || request.size() < headerEnd + 4 + length)
 			return;
 		const size_t lineEnd = request.find("\r\n");
 		const std::string line = request.substr(0, lineEnd);
@@ -238,27 +240,59 @@ kind()</script></body></html>)HTML";
 			path = path.substr(0, mark);
 		}
 		const std::string body = request.substr(headerEnd + 4, length);
+		std::map<std::string, std::string> asked = formFields(query);
+		const bool get = method == "GET", post = method == "POST";
+		const char* const json = "application/json; charset=utf-8";
 
-		if (method == "GET" && path == "/")
+		// nothing is done, and nothing is told, without the key that the console shows
+		if (asked["k"] != g_key)
+		{
+			if (get && path == "/")
+				reply(client, "403 Forbidden", "text/html; charset=utf-8",
+					"<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+					"<body style=\"font-family:system-ui,sans-serif;background:#0b0e14;color:#f1f3f8;padding:28px\"><h2>IPTV on PS5</h2>"
+					"<p>This address needs the key that the console shows.</p><p>On the console, open <b>Settings &rarr; Remote</b> and scan the code there, "
+					"or type the whole address shown under it.</p></body>");
+			else
+				reply(client, "403 Forbidden", "text/plain", "The key is missing or wrong.");
+			return;
+		}
+		asked.erase("k");
+
+		if (get && path == "/")
 		{
 			g_visits++;
-			std::string list;
+			reply(client, "200 OK", "text/html; charset=utf-8", kWebPage);
+		}
+		else if (get && path == "/status")
+		{
+			std::string status;
 			{
 				std::lock_guard<std::mutex> lock(g_mutex);
-				for (const std::string& name : g_playlists)
-					list += "<li>" + escapeHtml(name) + "</li>";
+				status = g_status;
 			}
-			if (list.empty())
-				list = "<li class=\"hint\">None yet</li>";
-			std::string page = kPage;
-			const size_t at = page.find("%PLAYLISTS%");
-			if (at != std::string::npos)
-				page.replace(at, 11, list);
-			reply(client, "200 OK", "text/html; charset=utf-8", page);
+			reply(client, "200 OK", json, status);
 		}
-		else if (method == "GET" && path == "/backup")
+		else if (get && path == "/list")
+			reply(client, "200 OK", json, askApp("list", asked));
+		else if (post && path == "/play")
+			reply(client, "200 OK", json, askApp("play", asked));
+		else if (post && (path == "/key" || path == "/cmd" || path == "/text"))
+		{
+			web::Request wanted;
+			wanted.kind = path.substr(1);
+			wanted.fields = asked;
+			wanted.body = body.substr(0, 400);
+			{
+				std::lock_guard<std::mutex> lock(g_mutex);
+				if (g_requests.size() < 64)
+					g_requests.push_back(std::move(wanted));
+			}
+			reply(client, "200 OK", json, "{}");
+		}
+		else if (get && path == "/backup")
 			reply(client, "200 OK", "application/octet-stream", makeBackup(), "Content-Disposition: attachment; filename=\"iptv-ps5-backup.txt\"\r\n");
-		else if (method == "POST" && (path == "/add" || path == "/file" || path == "/restore"))
+		else if (post && (path == "/add" || path == "/file" || path == "/restore"))
 		{
 			web::Request wanted;
 			wanted.kind = path.substr(1);
@@ -266,7 +300,7 @@ kind()</script></body></html>)HTML";
 				wanted.fields = formFields(body);
 			else
 			{
-				wanted.fields = formFields(query);
+				wanted.fields = asked;
 				wanted.body = body;
 			}
 			std::string answer = "Sent to the console.";
@@ -290,9 +324,10 @@ kind()</script></body></html>)HTML";
 			reply(client, "404 Not Found", "text/plain", "Nothing here.");
 	}
 
-	void loop(int listening)
+	// One of a few workers, all taking connections from the same listening socket, so that a slow
+	// upload or a question waiting on the app does not hold up a button press.
+	void loop(int listening, bool last)
 	{
-		g_alive = true;
 		while (g_run)
 		{
 			sockaddr_in from;
@@ -300,24 +335,22 @@ kind()</script></body></html>)HTML";
 			const int client = accept(listening, (sockaddr*)&from, &size);
 			if (client < 0)
 			{
-				usleep(120000);                         // nobody yet (the listening socket does not wait)
+				usleep(8000);                           // nobody yet (the listening socket does not wait)
 				continue;
 			}
-			// the client's own socket waits for data, but not for ever
+			// the client's own socket does not wait either; serve() does its own, limited, waiting
 			const int flags = fcntl(client, F_GETFL, 0);
-			if (flags >= 0)
-				fcntl(client, F_SETFL, flags & ~O_NONBLOCK);
-			if (setsockopt)
-			{
-				timeval patience = { 8, 0 };
-				setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &patience, sizeof(patience));
-				setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &patience, sizeof(patience));
-			}
+			fcntl(client, F_SETFL, (flags < 0 ? 0 : flags) | O_NONBLOCK);
 			serve(client);
 			close(client);
 		}
-		close(listening);
-		g_alive = false;
+		if (last)
+		{
+			// the others have had time to notice and leave before the socket goes
+			usleep(60000);
+			close(listening);
+		}
+		g_alive--;
 	}
 
 	// The console's own address on the network: found by asking which address would be used to reach
@@ -352,7 +385,7 @@ kind()</script></body></html>)HTML";
 	}
 }
 
-bool web::start(const std::string& dataDir, int port, const std::string& addressHint)
+bool web::start(const std::string& dataDir, int port, const std::string& addressHint, const std::string& key)
 {
 	if (g_run)
 		return true;
@@ -363,9 +396,15 @@ bool web::start(const std::string& dataDir, int port, const std::string& address
 		logLine("web: %s", g_problem.c_str());
 		return false;
 	}
-	for (int waited = 0; g_alive && waited < 20; waited++)
+	for (int waited = 0; g_alive > 0 && waited < 40; waited++)
 		usleep(50000);                                  // a previous run is still closing
+	if (g_alive > 0)
+	{
+		g_problem = "The page is still closing. Try again in a moment.";
+		return false;
+	}
 	g_dataDir = dataDir;
+	g_key = key;
 	const int listening = socket(AF_INET, SOCK_STREAM, 0);
 	if (listening < 0)
 	{
@@ -382,7 +421,7 @@ bool web::start(const std::string& dataDir, int port, const std::string& address
 	here.sin_family = AF_INET;
 	here.sin_port = htons((uint16_t)port);
 	here.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(listening, (sockaddr*)&here, sizeof(here)) != 0 || listen(listening, 4) != 0)
+	if (bind(listening, (sockaddr*)&here, sizeof(here)) != 0 || listen(listening, 8) != 0)
 	{
 		close(listening);
 		g_problem = "The app could not listen on port " + std::to_string(port) + ".";
@@ -394,12 +433,13 @@ bool web::start(const std::string& dataDir, int port, const std::string& address
 	std::string own = ownAddress();
 	if (own.empty())
 		own = addressHint;
-	g_address = "http://" + (own.empty() ? std::string("the-console") : own) + ":" + std::to_string(port);
-	g_listen = listening;
+	g_address = "http://" + (own.empty() ? std::string("the-console") : own) + ":" + std::to_string(port) + "/?k=" + key;
 	g_run = true;
 	g_visits = 0;
-	logLine("web: listening at %s", g_address.c_str());
-	startThread("web", [listening] { loop(listening); });
+	logLine("web: listening on port %d", port);
+	g_alive = kWorkers;
+	for (int worker = 0; worker < kWorkers; worker++)
+		startThread("web", [listening, worker] { loop(listening, worker == 0); });
 	return true;
 }
 
@@ -407,7 +447,8 @@ void web::stop()
 {
 	if (!g_run)
 		return;
-	g_run = false;                                      // the loop notices within a moment and closes the socket
+	g_run = false;                                      // the workers notice within a moment and close the socket
+	g_answered.notify_all();
 	logLine("web: stopped");
 }
 
@@ -426,8 +467,29 @@ bool web::take(Request& out)
 	return true;
 }
 
-void web::setPlaylists(const std::vector<std::string>& names)
+bool web::takeQuery(Query& out)
 {
 	std::lock_guard<std::mutex> lock(g_mutex);
-	g_playlists = names;
+	if (g_queries.empty())
+		return false;
+	out = std::move(g_queries.front());
+	g_queries.pop_front();
+	return true;
+}
+
+void web::answer(int id, const std::string& json)
+{
+	{
+		std::lock_guard<std::mutex> lock(g_mutex);
+		if (g_answers.size() > 32)
+			g_answers.clear();                          // (answers nobody came back for)
+		g_answers[id] = json;
+	}
+	g_answered.notify_all();
+}
+
+void web::setStatus(const std::string& json)
+{
+	std::lock_guard<std::mutex> lock(g_mutex);
+	g_status = json;
 }

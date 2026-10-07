@@ -105,6 +105,9 @@ static std::string profileSuffix()
 	return id ? "-p" + std::to_string(id) : std::string();
 }
 
+static const char* const kAppVersion = "1.1";
+static bool g_remoteOn = true;                  // the page for phones and computers is being served
+static std::string g_remoteKey;                 // the key its addresses carry (made at first use)
 static int g_layout = 0;                        // how the app is laid out: 0 classic, 1 TV
 static bool g_autoPreview = true;               // TV layout: resting on a live channel starts it playing
 static bool g_deinterlace = true;               // smooth the combing of interlaced broadcasts
@@ -175,14 +178,15 @@ static void loadProfiles()
 
 static void saveSettings()
 {
-	char text[900];
+	char text[1400];
 	snprintf(text, sizeof(text), "pointer_speed=%d\npointer_size=%d\npointer_type=%s\nshow_fps=%d\nresolution=%d\nvideo_detail=%d\n"
 		"picture_fit=%d\nsubtitle_size=%d\nsubtitle_delay_ms=%d\naudio_delay_ms=%d\nauto_next=%d\nclock_offset_min=%d\nclock_set=%d\n"
-		"wall_sort=%d\npin=%s\nlayout=%d\nauto_preview=%d\ndeinterlace=%d\nmenu_sounds=%d\nprofile=%d\n",
+		"wall_sort=%d\npin=%s\nlayout=%d\nauto_preview=%d\ndeinterlace=%d\nmenu_sounds=%d\nprofile=%d\nremote=%d\nremote_key=%s\n",
 		g_pointerSpeed, g_pointerSize, g_pointerType.c_str(), g_showFps ? 1 : 0, g_resolution, g_videoDetail,
 		g_pictureFit, g_subtitleSize, (int)(g_subtitleDelay * 1000), (int)(g_audioDelay * 1000), g_autoNext ? 1 : 0,
 		g_clockOffsetMinutes, g_clockSet ? 1 : 0, g_wallSort, g_pin.c_str(), g_layout, g_autoPreview ? 1 : 0, g_deinterlace ? 1 : 0, g_menuSounds ? 1 : 0,
-		g_profile >= 0 && g_profile < (int)g_profiles.size() ? g_profiles[(size_t)g_profile].id : 0);
+		g_profile >= 0 && g_profile < (int)g_profiles.size() ? g_profiles[(size_t)g_profile].id : 0,
+		g_remoteOn ? 1 : 0, g_remoteKey.c_str());
 	writeTextFile(g_dataDir + "/settings.txt", text);
 }
 
@@ -222,6 +226,16 @@ static void loadSettings()
 			else if (key == "deinterlace") g_deinterlace = value != "0";
 			else if (key == "menu_sounds") g_menuSounds = value != "0";
 			else if (key == "profile") g_profileWanted = atoi(value.c_str());
+			else if (key == "remote") g_remoteOn = value != "0";
+			else if (key == "remote_key")
+			{
+				// six letters or digits, or it is made afresh
+				bool plain = value.size() == 6;
+				for (const char c : value)
+					if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')))
+						plain = false;
+				g_remoteKey = plain ? value : std::string();
+			}
 			else if (key == "pin") g_pin = value.size() == 4 ? value : std::string();
 		}
 	}

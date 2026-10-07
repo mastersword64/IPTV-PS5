@@ -1,6 +1,6 @@
 # How the app's source is laid out
 
-Everything outside this folder is a self-contained module with its own header (`gfx`, `player`, `sources`, `net`, `playlist`, `json`, `logos`, `images`, `cursors`, `qr`, `webadd`, `xmltv`, `threads`).
+Everything outside this folder is a self-contained module with its own header (`gfx`, `player`, `sources`, `net`, `playlist`, `json`, `logos`, `images`, `cursors`, `qr`, `webadd`, `radio`, `xmltv`, `threads`).
 
 This folder is the app itself: its screens, its input and its state. The parts are included by `../main.cpp` in the order below and compiled as one unit, so a part may use anything defined in an earlier part. To find something, start from this table.
 
@@ -22,15 +22,17 @@ This folder is the app itself: its screens, its input and its state. The parts a
 | `14_tv_details_account.inc` | TV layout: title pages, Account, welcome |
 | `15_guide_grid.inc` | The guide grid and catch-up |
 | `16_search.inc` | Search |
-| `17_browse.inc` | The More menu; arrivals; the resume question; input and drawing for the main screens |
-| `18_keyboard_forms.inc` | Opening a playlist; the on-screen keyboard; the add-playlist form |
-| `19_settings_tabs.inc` | Settings: playlists, Remote, Profiles, Pointer, Playback |
-| `20_settings_groups_themes.inc` | Settings: Groups by country, PIN, Themes and layout |
-| `21_settings_screen.inc` | Settings: the screen itself and its input |
-| `22_main.inc` | Start-up and the main loop |
+| `17_radio.inc` | Radio: public stations from the Radio Browser directory |
+| `18_browse.inc` | The More menu; arrivals; the resume question; input and drawing for the main screens |
+| `19_keyboard_forms.inc` | Opening a playlist; the on-screen keyboard; the add-playlist form |
+| `20_remote.inc` | The remote: what the page for phones asks for (buttons, lists, play, typing, set-up), carried out |
+| `21_settings_tabs.inc` | Settings: playlists, Remote, About, Profiles, Pointer, Playback |
+| `22_settings_groups_themes.inc` | Settings: Groups by country, PIN, Themes and layout |
+| `23_settings_screen.inc` | Settings: the screen itself and its input |
+| `24_main.inc` | Start-up and the main loop |
 
 ## Working on it
 
 - A new screen usually means a new part, added to the list in `main.cpp` after the parts it depends on.
 - The build compiles every `.cpp` in `src/`; these parts end in `.inc` so that they are compiled only through `main.cpp`.
-- Both layouts share all state. Classic drawing is in parts 07 to 10; the TV layout is in parts 11 to 14; the guide grid and Search are drawn one way for both.
+- Both layouts share all state. Classic drawing is in parts 07 to 10; the TV layout is in parts 11 to 14; the guide grid, Search and Radio are drawn one way for both.

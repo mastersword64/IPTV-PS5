@@ -145,6 +145,7 @@ static void startAccount()
 
 static void buildHome();
 static void closeDetails();
+static void openRadio();
 
 static void switchTab(int tab)
 {
@@ -176,6 +177,11 @@ static void switchTab(int tab)
 	{
 		if (g_accountState == 0 || g_accountState == 3)
 			startAccount();
+		return;
+	}
+	if (tab == kRadioTab)
+	{
+		openRadio();
 		return;
 	}
 	T = &g_tabs[tab];
@@ -269,9 +275,9 @@ static void cancelLink()
 
 static std::string userAgentFor(const Channel& channel)
 {
-	const Source& source = g_sources[(size_t)g_active];
-	if (!channel.userAgent.empty())
+	if (!channel.userAgent.empty() || g_active < 0)
 		return channel.userAgent;
+	const Source& source = g_sources[(size_t)g_active];
 	if (!source.ua.empty())
 		return source.ua;
 	return source.type == "stalker" || !source.mac.empty() ? kStalkerUserAgent : "";

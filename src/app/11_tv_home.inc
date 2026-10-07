@@ -9,10 +9,10 @@ static const uint32_t kTvBack = 0x0a0c12ff, kTvWhite = 0xffffffff, kTvSoft = 0xf
 static bool g_tvOnRail = false;                 // focus is on the rail
 static int g_tvRailSel = 0;
 struct TvRailItem { const char* icon; const char* name; int tab; };   // tab -1: Settings
-static const int kTvRailCount = 7;
+static const int kTvRailCount = 8;
 static const TvRailItem kTvRail[kTvRailCount] = {
 	{ "\xE2\x8C\x82", "Home", 4 }, { "", "Search", 5 }, { "\xE2\x96\xB6", "Live TV", 0 }, { "\xE2\x96\xA6", "Movies", 1 },
-	{ "\xE2\x98\xB0", "Series", 2 }, { "\xE2\x98\xBA", "Account", 3 }, { "\xE2\x9A\x99", "Settings", -1 } };
+	{ "\xE2\x98\xB0", "Series", 2 }, { "\xE2\x98\xBA", "Account", 3 }, { "", "Radio", 6 }, { "\xE2\x9A\x99", "Settings", -1 } };
 static float g_tvRailWidth = 92, g_tvRowScroll = 0;
 
 static void tvRailGo(int place)
@@ -51,6 +51,19 @@ static void drawTvRail()
 		const uint32_t colour = focused ? kTvInk : here ? kTvWhite : kTvSoft;
 		if (kTvRail[i].icon[0])
 			centredTight(14, 64, y + 16, 30, colour, kTvRail[i].icon);
+		else if (kTvRail[i].tab == kRadioTab)
+		{
+			// a pair of notes: two heads, two stems and the beam joining them
+			const float keep = gfx::radiusScale();
+			gfx::setRadiusScale(1.0f);
+			gfx::roundRect(33, y + 40, 13, 10, 5, colour);
+			gfx::roundRect(50, y + 36, 13, 10, 5, colour);
+			gfx::rect(43, y + 22, 3, 23, colour);
+			gfx::rect(60, y + 18, 3, 23, colour);
+			gfx::triangle(43, y + 22, 63, y + 18, 63, y + 24, colour);
+			gfx::triangle(43, y + 22, 63, y + 24, 43, y + 28, colour);
+			gfx::setRadiusScale(keep);
+		}
 		else
 		{
 			// a magnifying glass: a ring and its handle

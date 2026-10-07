@@ -45,10 +45,10 @@ struct Tab
 	int gridTop = 0;                                    // first row of posters shown
 };
 
-static const int kTabCount = 6;                         // live, movies, series (the libraries), then account, home and search
-static const int kAccountTab = 3, kHomeTab = 4, kSearchTab = 5;
-static const char* const kTabName[kTabCount] = { "Live TV", "Movies", "Series", "Account", "Home", "Search" };
-static const int kTabOrder[kTabCount] = { 4, 5, 0, 1, 2, 3 };   // left to right on screen
+static const int kTabCount = 7;                         // live, movies, series (the libraries), then account, home, search and radio
+static const int kAccountTab = 3, kHomeTab = 4, kSearchTab = 5, kRadioTab = 6;
+static const char* const kTabName[kTabCount] = { "Live TV", "Movies", "Series", "Account", "Home", "Search", "Radio" };
+static const int kTabOrder[kTabCount] = { 4, 5, 0, 1, 2, 3, 6 };   // left to right on screen
 
 // Motion: how long the last frame took, and a short fade used whenever the screen changes.
 static double g_frameSeconds = 1.0 / 60.0;
