@@ -296,6 +296,7 @@ static double g_askPosition = 0;
 
 static void beginPlayback(const Channel& channel)
 {
+	player::expectSound(g_nowOn && g_nowTab == kRadioTab);
 	if (channel.url.compare(0, 10, "stalker://") != 0)
 	{
 		cancelLink();

@@ -211,7 +211,7 @@ static void drawGrid()
 		g_gridScroll = (float)g_gridTop;
 	glide(g_gridScroll, (float)g_gridTop, 18.0f);
 	bool asked = false;
-	gfx::clip(0, top - 6, 1920, (float)kGridRows * rowH + 12);
+	clipTo(0, top - 6, 1920, (float)kGridRows * rowH + 12);
 	for (int row = (int)g_gridScroll; row < (int)g_gridScroll + kGridRows + 1 && row < count; row++)
 	{
 		const int index = g_view[(size_t)row];
@@ -249,7 +249,7 @@ static void drawGrid()
 			// this row's strip of the grid, kept inside the rows' own area
 			const float areaTop = top - 6, areaBottom = top - 6 + (float)kGridRows * rowH + 12;
 			const float from = y - 4 > areaTop ? y - 4 : areaTop, to = y - 4 + rowH < areaBottom ? y - 4 + rowH : areaBottom;
-			gfx::clip(gx, from, gw, to > from ? to - from : 0);
+			clipTo(gx, from, gw, to > from ? to - from : 0);
 		}
 		if (!guide || guide->items.empty())
 		{
@@ -285,9 +285,9 @@ static void drawGrid()
 				const long long middle = (programme.start + programme.stop) / 2;
 				clickable(shownX, y, shownW, rowH - 8, [row, middle] { g_gridRow = row; g_gridTime = middle; gridPlay(row); });
 			}
-		gfx::clip(0, top - 6, 1920, (float)kGridRows * rowH + 12);
+		clipTo(0, top - 6, 1920, (float)kGridRows * rowH + 12);
 	}
-	gfx::unclip();
+	unclipAll();
 	// now
 	if (now >= g_gridStart && now <= g_gridStart + kGridSpan)
 	{

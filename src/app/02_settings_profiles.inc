@@ -105,7 +105,7 @@ static std::string profileSuffix()
 	return id ? "-p" + std::to_string(id) : std::string();
 }
 
-static const char* const kAppVersion = "1.1";
+static const char* const kAppVersion = "2.0";
 static bool g_remoteOn = true;                  // the page for phones and computers is being served
 static std::string g_remoteKey;                 // the key its addresses carry (made at first use)
 static int g_layout = 0;                        // how the app is laid out: 0 classic, 1 TV

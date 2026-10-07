@@ -144,6 +144,7 @@ namespace
 	typedef std::shared_ptr<Session> SessionPtr;
 
 	std::mutex g_currentMutex;
+	std::atomic<bool> g_expectSound{ false };
 	SessionPtr g_current;
 	SDL_AudioDeviceID g_device = 0;
 
@@ -719,8 +720,9 @@ namespace
 		// How long to study a stream before starting it. The defaults (5 s, 5 MB) are generous for
 		// broadcast streams, which describe themselves in their first second; less means a channel
 		// change shows a picture sooner.
-		av_dict_set(&options, "analyzeduration", "1800000", 0);
-		av_dict_set(&options, "probesize", "2000000", 0);
+		const bool quick = g_expectSound.load();
+		av_dict_set(&options, "analyzeduration", quick ? "400000" : "1800000", 0);
+		av_dict_set(&options, "probesize", quick ? "131072" : "2000000", 0);
 
 		s->fmt = avformat_alloc_context();
 		if (!s->fmt)
@@ -731,7 +733,7 @@ namespace
 		}
 		s->fmt->interrupt_callback.callback = onInterrupt;
 		s->fmt->interrupt_callback.opaque = s.get();
-		s->fmt->max_analyze_duration = 3 * AV_TIME_BASE;
+		s->fmt->max_analyze_duration = quick ? AV_TIME_BASE / 2 : 3 * AV_TIME_BASE;
 
 		int result = avformat_open_input(&s->fmt, s->url.c_str(), nullptr, &options);
 		av_dict_free(&options);
@@ -1180,6 +1182,11 @@ namespace
 			s->position = s->audioPts - s->startTime;
 		s->cv.notify_all();
 	}
+}
+
+void player::expectSound(bool yes)
+{
+	g_expectSound = yes;
 }
 
 void player::init()

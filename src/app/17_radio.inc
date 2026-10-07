@@ -493,7 +493,7 @@ static void drawRadio(const std::string& status)
 		if (chipX[watch + 1] > want + room) want = chipX[watch + 1] - room;
 		glide(g_radioChipScroll, want < 0 ? 0 : want, 16.0f);
 	}
-	gfx::clip(px + 20, 96, pw - 30, 54);
+	clipTo(px + 20, 96, pw - 30, 54);
 	for (int i = 0; i < R_MODES; i++)
 	{
 		const float x = px + 36 + chipX[i] - g_radioChipScroll, w = chipX[i + 1] - chipX[i] - 8;
@@ -505,7 +505,7 @@ static void drawRadio(const std::string& status)
 		gfx::bold(false);
 		clickable(x, 104, w, 38, [i] { g_radioChipSel = i; radioSetMode(i); });
 	}
-	gfx::unclip();
+	unclipAll();
 
 	// what the list is
 	std::string heading;
@@ -556,7 +556,7 @@ static void drawRadio(const std::string& status)
 	if (g_radioScroll - (float)g_radioTop > 24 || (float)g_radioTop - g_radioScroll > 24)
 		g_radioScroll = (float)g_radioTop;
 	glide(g_radioScroll, (float)g_radioTop, 20.0f);
-	gfx::clip(px, listTop - 8, pw, (float)rows * rowH + 16);
+	clipTo(px, listTop - 8, pw, (float)rows * rowH + 16);
 	for (int i = (int)g_radioScroll; i < (int)g_radioScroll + rows + 1 && i < count; i++)
 	{
 		const float y = listTop + ((float)i - g_radioScroll) * rowH;
@@ -624,7 +624,7 @@ static void drawRadio(const std::string& status)
 			radioActivate(i);
 		});
 	}
-	gfx::unclip();
+	unclipAll();
 	if (count > rows)
 	{
 		// how far down the list this is

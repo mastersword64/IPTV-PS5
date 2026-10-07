@@ -420,7 +420,7 @@ static void drawCategories(float x, float w)
 	if (T->catScroll - (float)g_catTop > 30 || (float)g_catTop - T->catScroll > 30)
 		T->catScroll = (float)g_catTop;
 	glide(T->catScroll, (float)g_catTop, 20.0f);
-	gfx::clip(x, kListTop - 2, w, (float)kCategoryRows * kCatRowH + 2);
+	clipTo(x, kListTop - 2, w, (float)kCategoryRows * kCatRowH + 2);
 	for (int at = (int)T->catScroll; at < (int)T->catScroll + kCategoryRows + 1; at++)
 	{
 		if (at >= count)
@@ -446,7 +446,7 @@ static void drawCategories(float x, float w)
 		gfx::text(x + w - 28 - nw, y + 12, 22, kMuted, number);
 		gfx::text(x + 26, y + 9, 26, selected ? kAccent : kText, g_playlist.groups[(size_t)i], w - 80 - nw);
 	}
-	gfx::unclip();
+	unclipAll();
 	drawScrollbar(x + w - 8, kListTop, (float)kCategoryRows * kCatRowH, g_catTop, count, kCategoryRows);
 }
 
@@ -561,7 +561,7 @@ static void drawChannels(float x, float w)
 	if (T->listScroll - (float)g_top > 24 || (float)g_top - T->listScroll > 24)
 		T->listScroll = (float)g_top;                  // a long jump is not animated
 	glide(T->listScroll, (float)g_top, 20.0f);
-	gfx::clip(x, kListTop - 2, w, (float)kChannelRows * kRowH + 2);
+	clipTo(x, kListTop - 2, w, (float)kChannelRows * kRowH + 2);
 	for (int i = (int)T->listScroll; i < (int)T->listScroll + kChannelRows + 1; i++)
 	{
 		if (i >= (int)g_view.size())
@@ -630,7 +630,7 @@ static void drawChannels(float x, float w)
 
 		gfx::text(x + w - 62, y + 18, 32, g_isFavourite[(size_t)channel] ? kAccent : kMuted, g_isFavourite[(size_t)channel] ? "\xE2\x98\x85" : "\xE2\x98\x86");
 	}
-	gfx::unclip();
+	unclipAll();
 	drawScrollbar(x + w - 8, kListTop, (float)kChannelRows * kRowH, g_top, (int)g_view.size(), kChannelRows);
 }
 

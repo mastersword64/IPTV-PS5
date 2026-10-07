@@ -18,4 +18,7 @@ int httpEpoch();
 bool httpGetQuiet(const std::string& url, std::string& out, size_t limit, long timeoutSeconds, int lane = 0);
 // A download on a connection of its own, apart from the playlist's: it is not stopped by
 // httpCancel() and never waits behind a portal. Used for the radio directory.
-bool httpGetOwn(const std::string& url, std::string& out, std::string& error, const std::string& userAgent, long timeoutSeconds, size_t limit);
+// `pin` ("host:port:address", or "" for none) says where a host is, so that it need not be looked up;
+// `header` is one extra request header, or "".
+bool httpGetOwn(const std::string& url, std::string& out, std::string& error, const std::string& userAgent, long timeoutSeconds, size_t limit,
+                const std::string& pin = "", const std::string& header = "");

@@ -271,7 +271,7 @@ static void drawGrid(float x, float w)
 	glide(g_cardPop, 1.045f, 18.0f);
 
 	const float top = kListTop + 6;
-	gfx::clip(x, kListTop - 12, w, 1080 - kListTop + 12);
+	clipTo(x, kListTop - 12, w, 1080 - kListTop + 12);
 	const int first = (int)T->gridScroll;
 	for (int pass = 0; pass < 2; pass++)                  // the focused card last, so it sits above its neighbours
 		for (int r = first; r < first + 4 && r < rows; r++)
@@ -301,7 +301,7 @@ static void drawGrid(float x, float w)
 						openDetails(channel);
 					});
 			}
-	gfx::unclip();
+	unclipAll();
 	if (rows > 2)
 	{
 		const float track = 1080 - kListTop - 20, size = track * 2 / (float)rows < 30 ? 30 : track * 2 / (float)rows;
@@ -515,7 +515,7 @@ static void drawDetails()
 			if (g_episodeScroll - (float)g_episodeTop > 20 || (float)g_episodeTop - g_episodeScroll > 20)
 				g_episodeScroll = (float)g_episodeTop;
 			glide(g_episodeScroll, (float)g_episodeTop);
-			gfx::clip(ex, lt, ew, (float)kEpisodeRows * rowH);
+			clipTo(ex, lt, ew, (float)kEpisodeRows * rowH);
 			for (int i = (int)g_episodeScroll; i < (int)g_episodeScroll + kEpisodeRows + 1 && i < count; i++)
 			{
 				const int episode = T->drillList[(size_t)i];
@@ -535,7 +535,7 @@ static void drawDetails()
 				}
 				clickable(ex + 10, ry, ew - 20, rowH - 6, [i] { g_detailOnEpisodes = true; g_episodeSel = i; playEpisode(i); });
 			}
-			gfx::unclip();
+			unclipAll();
 			drawScrollbar(ex + ew - 10, lt, (float)kEpisodeRows * rowH, (int)(g_episodeScroll + 0.5f), count, kEpisodeRows);
 		}
 	}

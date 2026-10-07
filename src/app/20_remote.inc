@@ -442,6 +442,8 @@ static std::string remoteList(std::map<std::string, std::string>& fields)
 	return "{\"slot\":0,\"gen\":0,\"lib\":" + std::to_string(library) + ",\"t\":\"Groups\",\"none\":\"Every group is hidden.\",\"rows\":[" + rows + "]}";
 }
 
+static bool g_remoteDeferred = false;                   // the question in hand will be answered later, from another thread
+
 // "Play this" from the page.
 static std::string remotePlay(std::map<std::string, std::string>& fields)
 {
@@ -454,6 +456,29 @@ static std::string remotePlay(std::map<std::string, std::string>& fields)
 	if (atoi(fields["g"].c_str()) != g_remoteGens[table] || index < 0 || index >= (int)items.size())
 		return "{\"stale\":1,\"err\":\"That list has changed. It is being loaded again.\"}";
 	RemoteItem item = items[(size_t)index];
+	if (fields["act"] == "url")
+	{
+		// "play it on this device": the page is told where the stream is, and plays it itself
+		if (isSeriesItem(item.channel.url))
+			return remoteError("Open the series and choose an episode.");
+		const std::string head = "{\"ok\":1,\"name\":" + jsonText(item.channel.name) + ",\"audio\":" + (item.kind == 2 ? "true" : "false") + ",\"url\":";
+		if (item.channel.url.compare(0, 10, "stalker://") != 0)
+			return head + jsonText(item.channel.url) + "}";
+		// a portal hands out the real address when asked; that is done in the background, and the
+		// page's question is answered when it comes
+		const Source source = g_sources[(size_t)g_active];
+		const std::string command = item.channel.url.substr(10);
+		const int question = atoi(fields["#"].c_str());
+		g_remoteDeferred = true;
+		startThread("link-page", [source, command, question, head] {
+			std::string url, error;
+			if (stalkerResolve(source, command, url, error))
+				web::answer(question, head + jsonText(url) + "}");
+			else
+				web::answer(question, remoteError("The portal did not give an address: " + error));
+		});
+		return "";
+	}
 	if (fields["act"] == "fav")
 	{
 		// the star beside a row: nothing is played, and the TV stays where it is
@@ -846,7 +871,13 @@ static void pumpRemote()
 	}
 	web::Query query;
 	while (web::takeQuery(query))
-		web::answer(query.id, query.what == "play" ? remotePlay(query.fields) : remoteList(query.fields));
+	{
+		g_remoteDeferred = false;
+		query.fields["#"] = std::to_string(query.id);
+		const std::string reply = query.what == "play" ? remotePlay(query.fields) : remoteList(query.fields);
+		if (!g_remoteDeferred)
+			web::answer(query.id, reply);
+	}
 	static double publishedAt = -10;
 	if (nowSeconds() - publishedAt > 0.25)
 	{

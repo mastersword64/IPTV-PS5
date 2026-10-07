@@ -195,13 +195,44 @@ static bool pointerOn()
 	return nowSeconds() < g_pointerUntil;
 }
 
+// While drawing is limited to a box (a list scrolling under a heading), the pointer is limited to
+// it too: what has scrolled out of the box cannot be seen, so it cannot be pointed at or clicked.
+static bool g_clipOn = false;
+static float g_clipBox[4] = { 0, 0, 0, 0 };
+
+static void clipTo(float x, float y, float w, float h)
+{
+	gfx::clip(x, y, w, h);
+	g_clipOn = true;
+	g_clipBox[0] = x; g_clipBox[1] = y; g_clipBox[2] = w; g_clipBox[3] = h;
+}
+
+static void unclipAll()
+{
+	gfx::unclip();
+	g_clipOn = false;
+}
+
 static bool hovering(float x, float y, float w, float h)
 {
+	if (g_clipOn && (g_pointerX < g_clipBox[0] || g_pointerX >= g_clipBox[0] + g_clipBox[2] || g_pointerY < g_clipBox[1] || g_pointerY >= g_clipBox[1] + g_clipBox[3]))
+		return false;
 	return pointerOn() && g_pointerX >= x && g_pointerX < x + w && g_pointerY >= y && g_pointerY < y + h;
 }
 
 static void clickable(float x, float y, float w, float h, std::function<void()> click)
 {
+	if (g_clipOn)
+	{
+		// only the part inside the box
+		const float x2 = x + w < g_clipBox[0] + g_clipBox[2] ? x + w : g_clipBox[0] + g_clipBox[2], y2 = y + h < g_clipBox[1] + g_clipBox[3] ? y + h : g_clipBox[1] + g_clipBox[3];
+		if (x < g_clipBox[0]) x = g_clipBox[0];
+		if (y < g_clipBox[1]) y = g_clipBox[1];
+		w = x2 - x;
+		h = y2 - y;
+		if (w <= 0 || h <= 0)
+			return;
+	}
 	g_hits.push_back({ x, y, w, h, std::move(click) });
 }
 

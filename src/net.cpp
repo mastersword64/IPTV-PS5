@@ -31,7 +31,7 @@ long long httpReceivedBytes()
 static int onDebug(CURL*, curl_infotype type, char* data, size_t size, void* user)
 {
 	int* lines = static_cast<int*>(user);
-	if (type != CURLINFO_TEXT || *lines >= 40)
+	if (!lines || type != CURLINFO_TEXT || *lines >= 40)
 		return 0;
 	(*lines)++;
 	std::string text(data, size);
@@ -192,10 +192,27 @@ bool httpGetQuiet(const std::string& url, std::string& out, size_t limit, long t
 	return result == CURLE_OK && status < 400 && !out.empty();
 }
 
-bool httpGetOwn(const std::string& url, std::string& out, std::string& error, const std::string& userAgent, long timeoutSeconds, size_t limit)
+bool httpGetOwn(const std::string& url, std::string& out, std::string& error, const std::string& userAgent, long timeoutSeconds, size_t limit,
+                const std::string& pin, const std::string& header)
 {
 	out.clear();
-	CURL* curl = curl_easy_init();
+	// A few connection handles are kept and handed out, never torn down: on this console taking
+	// one apart after a finished download does not come back.
+	static std::mutex poolMutex;
+	static std::vector<CURL*> pool;
+	CURL* curl = nullptr;
+	{
+		std::lock_guard<std::mutex> lock(poolMutex);
+		if (!pool.empty())
+		{
+			curl = pool.back();
+			pool.pop_back();
+		}
+	}
+	if (curl)
+		curl_easy_reset(curl);
+	else
+		curl = curl_easy_init();
 	if (!curl)
 	{
 		error = "the download library could not start";
@@ -207,17 +224,35 @@ bool httpGetOwn(const std::string& url, std::string& out, std::string& error, co
 	curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent.c_str());
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 6L);
-	curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");   // (whatever packing this build of the library can undo)
+	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, timeoutSeconds < 5 ? timeoutSeconds : 5L);
+	// the console has no route for the newer kind of address (IPv6), and a server that offers one
+	// can leave a connection waiting on it: only the ordinary kind is used
+	curl_easy_setopt(curl, CURLOPT_IPRESOLVE, (long)CURL_IPRESOLVE_V4);
 	curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeoutSeconds);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, onLimitedData);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &limited);
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+	curl_slist* pins = pin.empty() ? nullptr : curl_slist_append(nullptr, pin.c_str());
+	if (pins)
+		curl_easy_setopt(curl, CURLOPT_RESOLVE, pins);
+	curl_slist* headers = header.empty() ? nullptr : curl_slist_append(nullptr, header.c_str());
+	if (headers)
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 	const CURLcode result = curl_easy_perform(curl);
 	long status = 0;
 	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-	curl_easy_cleanup(curl);
+	curl_easy_setopt(curl, CURLOPT_RESOLVE, nullptr);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, nullptr);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, nullptr);
+	if (pins)
+		curl_slist_free_all(pins);
+	if (headers)
+		curl_slist_free_all(headers);
+	{
+		std::lock_guard<std::mutex> lock(poolMutex);
+		pool.push_back(curl);
+	}
 	if (result != CURLE_OK)
 	{
 		error = curl_easy_strerror(result);

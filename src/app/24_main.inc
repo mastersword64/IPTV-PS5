@@ -448,6 +448,7 @@ int es_main(int, char**)
 		g_hits.clear();
 		logosPump();
 		gfx::begin(kBackground);
+		g_clipOn = false;
 		drawBackground();
 		if (g_screen == LOADING)
 		{

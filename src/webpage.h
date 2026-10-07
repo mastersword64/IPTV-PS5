@@ -108,6 +108,17 @@ h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:18px 4px 10px}
 
 /* a film's own sheet */
 #sheet{position:fixed;inset:0;z-index:20;background:#000a;display:none;align-items:flex-end;justify-content:center}
+/* playing on this device */
+.where{margin-left:10px;padding:6px 12px;border-radius:16px;font-size:12.5px;background:#ffffff1f;font-weight:650}
+.where.here{background:#fff;color:var(--ink)}
+#own{position:fixed;inset:0;z-index:30;background:#05060af5;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:14px}
+#own.on{display:flex}
+#own h3{margin:0;font-size:20px;font-weight:800;text-align:center;max-width:900px}
+#own video{width:100%;max-width:1100px;max-height:62vh;background:#000;border-radius:16px}
+#own audio{width:100%;max-width:560px}
+#own p{margin:0;color:var(--soft);font-size:14px;text-align:center;max-width:620px}
+#own .acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+#own .acts button{padding:12px 18px}#own .acts .go{background:#fff;color:var(--ink)}
 #sheet.on{display:flex}
 .sh{background:var(--panel);border-radius:26px 26px 0 0;width:100%;max-width:560px;padding:20px 20px calc(22px + env(safe-area-inset-bottom));display:grid;grid-template-columns:110px 1fr;gap:16px;animation:up .18s ease-out}
 @keyframes up{from{transform:translateY(40px);opacity:0}}
@@ -148,7 +159,7 @@ h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:18px 4px 10px}
 <div id="amb"></div>
 <div class="app">
 <aside class="side">
- <div class="brand"><span id="dot"></span>IPTV on PS5<small id="pln"></small></div>
+ <div class="brand"><span id="dot"></span>IPTV on PS5<button class="where" id="where" onclick="setHere(!here)"></button><small id="pln"></small></div>
  <div class="now"><div class="art logo" id="na"></div><div class="nw"><b id="nt">Connecting...</b><span id="ns"></span></div>
   <div class="tr"><button onclick="cmd('prev')" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button><button id="pp" onclick="cmd('pause')" aria-label="Pause or play"></button><button onclick="cmd('stop')" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg></button><button onclick="cmd('next')" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button></div>
   <div id="bar" title="Tap to move through the film"><b><i></i></b></div></div>
@@ -193,6 +204,7 @@ h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:18px 4px 10px}
 </div></section>
 </main></div>
 <div id="sheet" onclick="if(event.target==this)shut()"></div>
+<div id="own"></div>
 
 <script>
 var K=(location.search.match(/[?&]k=([^&]*)/)||[])[1]||'';
@@ -226,6 +238,7 @@ Array.prototype.forEach.call(document.querySelectorAll('[data-k]'),function(b){
 var KEYS={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',Enter:'ok',Escape:'back',Backspace:'back'};
 document.addEventListener('keydown',function(e){var t=e.target.tagName;
  if(t=='INPUT'||t=='SELECT'||t=='TEXTAREA'||e.ctrlKey||e.metaKey||e.altKey)return;
+ if($('own').className){if(e.key=='Escape')shutOwn();return}
  if($('sheet').className){if(e.key=='Escape')shut();return}
  if(t=='BUTTON'&&e.key=='Enter')return;
  if(KEYS[e.key]){e.preventDefault();key(KEYS[e.key])}});
@@ -327,17 +340,61 @@ function fav(n,r,then){fetch(u('/play?act=fav&s='+L[n].d.slot+'&g='+L[n].d.gen+'
  if(k=='g')load(n,'/list?what=group&lib='+lib+'&i='+r.i);
  else if(k=='e')load(n,'/list?what=episodes&s='+L[n].d.slot+'&g='+L[n].d.gen+'&i='+r.i);
  else if(r.w)sheet(n,r);
+ else if(here)ask(n,r);
  else{t.className+=' cur';play(n,r)}
 })});
 /* a film: its poster, and what can be done with it */
 function sheet(n,r){var part=r.r>0.01&&r.r<0.97,canFav=r.f!=null;
  $('sheet').innerHTML='<div class="sh">'+art(r.n,r.p,'poster')+'</div><div><h3>'+esc(r.n)+'</h3><p>'+esc(r.s||'')+'</p></div><div class="acts">'
-  +'<button class="go" id="s1">'+(part?'Resume on the TV':'Play on the TV')+'</button>'+(part?'<button id="s2">Start from the beginning</button>':'')
+  +'<button class="go" id="s1">'+(part?'Resume on the TV':'Play on the TV')+'</button>'+(part?'<button id="s2">Start from the beginning</button>':'')+'<button id="s5">Play here, in this page</button><button id="s6">Open in an app on this device</button>'
   +(canFav?'<button id="s3">'+(r.f?'&#9733; Remove from favorites':'&#9734; Add to favorites')+'</button>':'')+'<button id="s4">Close</button></div></div>';
  $('sheet').className='on';
+ $('s5').onclick=function(){shut();playHere(n,r,0)};$('s6').onclick=function(){shut();playHere(n,r,1)};
  $('s1').onclick=function(){shut();play(n,r)};if(part)$('s2').onclick=function(){shut();play(n,r,1)};
  if(canFav)$('s3').onclick=function(){fav(n,r,function(){sheet(n,r)})};$('s4').onclick=shut;$('s1').focus()}
 function shut(){$('sheet').className='';$('sheet').innerHTML=''}
+
+/* playing on this device instead of the TV: in the page when the browser can, in VLC when it cannot */
+var here=false;try{here=localStorage.getItem('here')=='1'}catch(e){}
+function setHere(v){here=v;try{localStorage.setItem('here',v?'1':'0')}catch(e){}
+ var b=$('where');b.textContent=v?'Asks where to play':'Plays on the TV';b.className='where'+(v?' here':'')}
+setHere(here);
+var hls=null;
+/* "where shall this play?": the TV, this page, or an app on this device */
+function ask(n,r){
+ $('sheet').innerHTML='<div class="sh">'+art(r.n,r.p,r.w?'poster':'logo')+'</div><div><h3>'+esc(r.n)+'</h3><p>'+esc(r.s||'')+'</p></div><div class="acts">'
+  +'<button class="go" id="a1">Play on the TV</button><button id="a2">Play here, in this page</button><button id="a3">Open in an app on this device</button><button id="a4">Close</button></div></div>';
+ $('sheet').className='on';
+ $('a1').onclick=function(){shut();play(n,r)};$('a2').onclick=function(){shut();playHere(n,r,0)};
+ $('a3').onclick=function(){shut();playHere(n,r,1)};$('a4').onclick=shut}
+function playHere(n,r,app){note('Getting the address...');
+ fetch(u('/play?act=url&s='+L[n].d.slot+'&g='+L[n].d.gen+'&i='+r.i),{method:'POST'}).then(function(x){return x.json()}).then(function(d){
+  note('');if(d.err){note(d.err);if(d.stale)load(n,L[n].url);return}own(d,app)}).catch(lost)}
+function playlistFile(d){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['#EXTM3U\n#EXTINF:-1,'+d.name+'\n'+d.url+'\n'],{type:'audio/x-mpegurl'}));a.download=d.name.replace(/[^\w .-]+/g,'_')+'.m3u';document.body.appendChild(a);a.click();a.remove()}
+/* hands the stream to whichever player the device offers: Android asks which app; an iPhone or
+   iPad shows its share sheet; a computer gets a small playlist file that opens in its player */
+function openApp(d){var a=navigator.userAgent,m=d.url.match(/^(https?):\/\/(.*)$/);
+ if(/Android/i.test(a)&&m){location.href='intent://'+m[2]+'#Intent;scheme='+m[1]+';action=android.intent.action.VIEW;type='+(d.audio?'audio':'video')+'/*;end';return}
+ if(navigator.share&&(/iPhone|iPad|iPod/i.test(a)||(navigator.maxTouchPoints>1&&/Mac/i.test(a)))){navigator.share({title:d.name,url:d.url}).catch(function(){});return}
+ playlistFile(d)}
+function own(d,app){var o=$('own'),tag=d.audio?'audio':'video';
+ o.innerHTML='<h3>'+esc(d.name)+'</h3><'+tag+' id="med" controls autoplay playsinline></'+tag+'><p id="ow"></p><div class="acts">'
+  +'<button class="go" id="o1">Open in an app</button><button id="o2">Save as a playlist file</button><button id="o3">Copy the address</button><button id="o4">Close</button></div>';
+ o.className='on';var med=$('med'),tried=false;
+ function cannot(){$('ow').textContent='This browser cannot play this kind of stream here. "Open in an app" hands it to a player on this device (it asks which, if there are several).';med.style.display='none'}
+ function viaHls(){if(tried)return cannot();tried=true;
+  if(window.Hls&&Hls.isSupported()){hls=new Hls();hls.on(Hls.Events.ERROR,function(e,x){if(x.fatal){hls.destroy();hls=null;cannot()}});hls.loadSource(d.url);hls.attachMedia(med);med.play().catch(function(){})}
+  else cannot()}
+ $('o1').onclick=function(){med.pause();openApp(d)};$('o2').onclick=function(){playlistFile(d)};
+ $('o3').onclick=function(){(navigator.clipboard?navigator.clipboard.writeText(d.url):Promise.reject()).then(function(){$('ow').textContent='Address copied.'},function(){prompt('The address:',d.url)})};
+ $('o4').onclick=shutOwn;
+ if(app){med.style.display='none';$('ow').textContent='Choose a player on this device.';openApp(d);return}
+ med.addEventListener('error',function(){if(/\.m3u8/i.test(d.url))viaHls();else cannot()});
+ if(/\.m3u8/i.test(d.url)&&!med.canPlayType('application/vnd.apple.mpegurl')){
+  // most browsers need a helper for this kind of stream; it is fetched from the internet when there is one
+  if(window.Hls)viaHls();else{var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js';s.onload=viaHls;s.onerror=cannot;document.head.appendChild(s)}}
+ else{med.src=d.url;var p=med.play();if(p&&p.catch)p.catch(function(){})}}
+function shutOwn(){if(hls){hls.destroy();hls=null}var m=$('med');if(m){m.pause();m.removeAttribute('src');m.load()}$('own').className='';$('own').innerHTML=''}
 function chips(id,b){var c=$(id).children;for(var i=0;i<c.length;i++)c[i].className=c[i]==b?'on':''}
 function chan(w,b){chips('cc',b||$('cc').children[0]);load(1,'/list?what='+w+'&lib='+lib)}
 function find(){var q=$('sq').value.trim();if(q.length<2){note('Type at least two letters.');return false}

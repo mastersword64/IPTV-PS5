@@ -29,6 +29,9 @@ namespace player
 	State state();
 	std::string message();                        // why it failed, when it did
 	bool hasVideo();
+	// Says that what is played next is expected to be sound only (a radio station): it is then
+	// studied only briefly before it starts, so it is heard sooner.
+	void expectSound(bool yes);
 	// What a radio station says is playing ("Artist - Song"), when it says ("" otherwise).
 	std::string streamTitle();
 	// True when a new picture is due; its memory stays valid until the next call or stop().

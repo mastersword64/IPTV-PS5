@@ -145,7 +145,7 @@ static void drawTvLive(const std::string& status)
 		if (chipX[(size_t)watch + 1] > want + room) want = chipX[(size_t)watch + 1] - room;
 		glide(g_tvChipScroll, want < 0 ? 0 : want, 16.0f);
 	}
-	gfx::clip(px + 20, 96, pw - 30, 54);
+	clipTo(px + 20, 96, pw - 30, 54);
 	for (int i = 0; i < (int)chips.size(); i++)
 	{
 		const float x = px + 36 + chipX[(size_t)i] - g_tvChipScroll, w = chipX[(size_t)i + 1] - chipX[(size_t)i] - 10;
@@ -157,7 +157,7 @@ static void drawTvLive(const std::string& status)
 		gfx::bold(false);
 		clickable(x, 104, w, 38, [i] { g_tvChip = i; tvPressChip(i); });
 	}
-	gfx::unclip();
+	unclipAll();
 
 	const bool groupList = g_section == S_GROUPS && g_focus != F_CHANNELS && !g_playlist.groups.empty();
 	const float listTop = 216;
@@ -174,7 +174,7 @@ static void drawTvLive(const std::string& status)
 		glide(T->catScroll, (float)g_catTop, 20.0f);
 		if (count == 0)
 			centredIn(px, pw, 420, 22, kTvDim, T->hidden.empty() ? "No groups" : "Every group here is hidden");
-		gfx::clip(px, listTop - 4, pw, (float)rows * rowH + 8);
+		clipTo(px, listTop - 4, pw, (float)rows * rowH + 8);
 		for (int at = (int)T->catScroll; at < (int)T->catScroll + rows + 1 && at < count; at++)
 		{
 			const int i = T->cats[(size_t)at];
@@ -202,7 +202,7 @@ static void drawTvLive(const std::string& status)
 				g_focus = same ? F_CHANNELS : F_CATEGORIES;
 			});
 		}
-		gfx::unclip();
+		unclipAll();
 	}
 	else
 	{
@@ -237,7 +237,7 @@ static void drawTvLive(const std::string& status)
 			T->listScroll = (float)g_top;
 		glide(T->listScroll, (float)g_top, 20.0f);
 		const long long clockSeconds = (long long)time(nullptr);
-		gfx::clip(px, listTop - 8, pw, (float)rows * rowH + 16);
+		clipTo(px, listTop - 8, pw, (float)rows * rowH + 16);
 		for (int i = (int)T->listScroll; i < (int)T->listScroll + rows + 1 && i < count; i++)
 		{
 			const int channel = g_view[(size_t)i];
@@ -302,7 +302,7 @@ static void drawTvLive(const std::string& status)
 				activateSelected();
 			});
 		}
-		gfx::unclip();
+		unclipAll();
 	}
 
 	// what is on: the channel playing (or the one in focus, before anything plays)

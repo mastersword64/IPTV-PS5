@@ -238,7 +238,7 @@ static void drawHome()
 	if (want > rowTop[(size_t)g_homeRow]) want = rowTop[(size_t)g_homeRow];
 	glide(g_homeScroll, want, 12.0f);
 
-	gfx::clip(0, top, 1920, 1080 - top);
+	clipTo(0, top, 1920, 1080 - top);
 	for (size_t r = 0; r < g_home.size(); r++)
 	{
 		HomeRow& row = g_home[r];
@@ -300,7 +300,7 @@ static void drawHome()
 				});
 			}
 	}
-	gfx::unclip();
+	unclipAll();
 	if (g_popFor != g_homeRow * 1000 + g_home[(size_t)g_homeRow].sel)
 	{
 		g_popFor = g_homeRow * 1000 + g_home[(size_t)g_homeRow].sel;

@@ -401,7 +401,7 @@ static void drawTvHome()
 		total += g_home[i].wide ? 300.0f : g_home[i].posters ? 392.0f : 262.0f;
 	}
 	glide(g_tvRowScroll, rowTop[(size_t)g_homeRow], 13.0f);
-	gfx::clip(0, rowsTop - 26, 1920, 1080 - rowsTop + 26);
+	clipTo(0, rowsTop - 26, 1920, 1080 - rowsTop + 26);
 	for (size_t r = 0; r < g_home.size(); r++)
 	{
 		HomeRow& list = g_home[r];
@@ -446,7 +446,7 @@ static void drawTvHome()
 				});
 			}
 	}
-	gfx::unclip();
+	unclipAll();
 	if (g_popFor != g_homeRow * 1000 + row.sel)
 	{
 		g_popFor = g_homeRow * 1000 + row.sel;

@@ -7,11 +7,11 @@
 **A native IPTV player for the PlayStation 5**
 
 [![Platform](https://img.shields.io/badge/platform-PS5-003791?style=for-the-badge&logo=playstation&logoColor=white)](#requirements)
-[![Version](https://img.shields.io/badge/version-1.1-2ea44f?style=for-the-badge)](../../releases)
+[![Version](https://img.shields.io/badge/version-2.0-2ea44f?style=for-the-badge)](../../releases)
 [![Language](https://img.shields.io/badge/C%2B%2B-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)](#how-the-source-is-laid-out)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
-[Features](#features) · [Screenshots](#screenshots) · [Remote](#remote-your-phone-as-the-controller) · [Radio](#radio) · [Controls](#controls) · [Build](#build-and-install) · [Troubleshooting](#troubleshooting)
+[Features](#features) · [Screenshots](#screenshots) · [Remote](#remote-your-phone-as-the-controller) · [Radio](#radio) · [Controls](#controls) · [Install](#install-a-ready-built-release) · [Build](#build-from-source) · [Troubleshooting](#troubleshooting)
 
 </div>
 
@@ -61,12 +61,16 @@ It is written in C++ and draws its own interface with OpenGL, decoding video wit
 
 **Remote** 📱
 
-- A page served by the console turns a phone or computer into the remote control: scan the QR code in Settings
-- Every button of the controller, with arrows that repeat while held
-- Browse live channels, movies and series (down to the episode) on the phone and tap one to play it on the TV
+- A page served by the console turns a phone, tablet or computer into the remote control: scan the QR code in Settings, nothing to install
+- Every button of the controller, with arrows that repeat while held; on a computer the arrow keys, Enter and Esc do the same
+- Browse Live TV, Movies and Series on the device, with channel logos and posters, and tap to play on the TV
+- Series list their episodes; films resume where they were left, or start over
 - Search channels, films and series, or radio stations, and play a result with a tap
-- Type into the TV's on-screen keyboard from the phone
-- Pause, stop, skip, next and previous for whatever is playing
+- Now-playing bar with previous, pause, stop and next, and a progress bar you can tap to move through a film
+- Stars to add or remove favorites without touching the controller
+- Type into the TV's on-screen keyboard from the device
+- Watch or listen on the device itself instead of the TV: in the page where the browser can play the stream, or handed to a player app of your choice where it cannot
+- A layout for tablets and computers that keeps the remote beside the lists
 
 **Playback**
 
@@ -123,6 +127,8 @@ The page has seven tabs:
 
 Lists show channel logos and film posters, as the TV does. On a tablet or computer the remote and what is playing stay at the left while the lists fill the rest, and a computer's arrow keys, Enter and Esc work as the remote. A star beside a channel or station makes it a favorite; tapping a film opens a sheet to play, resume or start it over.
 
+**Playing on the device.** The switch beside the page's title chooses what a tap does: play on the TV straight away, or ask where to play. When it asks, the choices are the TV, this page, or an app on the device. Radio, MP4 films and HLS channels play in the page; other kinds (MPEG-TS channels, MKV films) cannot be played by a browser, so "Open in an app" hands the stream to a player on the device: Android asks which app to use, an iPhone or iPad shows its share sheet, and a computer gets a small playlist file that opens in its player. Many providers allow one stream at a time, so playing on the device may stop the TV.
+
 A bar at the top always shows what is playing, with previous, pause, stop and next. Whenever the keyboard is open on the TV, the page offers a box to type into instead.
 
 > [!NOTE]
@@ -134,7 +140,11 @@ The **Radio** screen (the last entry before Settings) plays public radio station
 
 - **Popular**, **Countries**, **Genres** and **Search** choose what is listed; **Favorites** (□ on a station) and **Recent** are your own.
 - ✕ plays a station, and stops it again. It keeps playing while you look at other screens, until you stop it or start something else.
+- The song now playing is shown when the station announces it.
 - Stations that send MP3 or AAC sound are listed; the few that use other formats are left out.
+- It works on consoles whose network settings use a filtering DNS: the app finds the directory by itself.
+
+Radio Browser is a community project. To add a station or correct one, use its website; the change reaches this app, and every other app that uses the directory, without an update.
 
 ## Controls
 
@@ -150,13 +160,28 @@ The **Radio** screen (the last entry before Settings) plays public radio station
 | Right stick | Scroll |
 | OPTIONS | Settings |
 
-## Requirements
+## Install a ready-built release
+
+Each [release](../../releases) carries a ready-built copy of the app, `iptv-ps5-<version>-PPSA99779.zip`, so nothing has to be compiled.
+
+You need a PlayStation 5 able to run homebrew, with its FTP server running, and a computer on the same network with `make` and `curl` (any Linux or macOS machine has them).
+
+```bash
+unzip iptv-ps5-2.0-PPSA99779.zip
+make -C title deploy PS5_HOST=<the console's address>
+```
+
+That sends the app to the console over FTP, exactly as a build from source does. Start **IPTV for PS5** from the console's home screen, then add a playlist in Settings, or scan the code in **Settings → Remote** and add it from your phone.
+
+The release contains no playlist and no channels. `NOTICES.md` inside it lists the open-source libraries built into the app and their licences.
+
+## Build from source
+
+Requirements:
 
 - A PlayStation 5 able to run homebrew, with an FTP server reachable on the network
 - A Linux machine to build on
-- The PS5 homebrew toolchain and support kit this project builds against (see below)
-
-## Build and install
+- The PS5 homebrew toolchain and support kit this project builds against
 
 The build script expects the toolchain in `~/ps5-workspace/es-port` and the support kit in `~/Downloads/es-ps5-kit`. The paths are set at the top of [`build.sh`](build.sh).
 
@@ -165,6 +190,12 @@ git clone <this repository> ~/ps5-workspace/iptv-ps5
 cd ~/ps5-workspace/iptv-ps5
 bash build.sh
 make -C build/title deploy PS5_HOST=<console address>
+```
+
+To pack what was built as a release zip for others (it refuses if a playlist of yours is in the project folder, so that it cannot be shipped by mistake):
+
+```bash
+bash tools/make-release.sh
 ```
 
 `build.sh` compiles the app, links it, and assembles the title folder. `deploy` sends it to the console over FTP.
@@ -232,13 +263,13 @@ The app writes a log to `/data/iptv/iptv-log.txt` on the console. It records wha
 
 **IPTV for PS5 does not provide any playlists or other digital content.** It is a player. What you watch with it, and your right to watch it, are your own responsibility.
 
-The radio stations are listed by Radio Browser, not by this project, which neither hosts nor chooses them.
+The radio stations are listed by Radio Browser, not by this project, which neither hosts nor chooses them. Each station's stream comes from that station's own server.
 
 ## Credits
 
 - Modelled on [IPTVnator](https://github.com/4gray/iptvnator) by 4gray. This is a separate project with its own code, name and icon.
 - Built with [FFmpeg](https://ffmpeg.org), [SDL2](https://www.libsdl.org), [FreeType](https://freetype.org) and [curl](https://curl.se).
-- Radio stations come from [Radio Browser](https://www.radio-browser.info), a community directory.
+- **Radio is possible because of [Radio Browser](https://www.radio-browser.info)**, a free and open directory of internet radio stations built and kept up by volunteers, with its [server software](https://github.com/segler-alex/radiobrowser-api) by Alex Segler and contributors. This app uses its public API to list stations, and tells it when a station is played, which is how its "most played" lists are made. Stations are added and corrected by the community: if one is missing or wrong, you can add or fix it on the Radio Browser website, and it will appear here for everyone.
 - The pointer files in `pointers/` were drawn for this app.
 
 ## License

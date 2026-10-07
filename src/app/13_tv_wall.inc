@@ -250,7 +250,7 @@ static void drawTvWall()
 		if (chipX[(size_t)watch + 1] > want + room) want = chipX[(size_t)watch + 1] - room;
 		glide(g_tvWallChipScroll, want < 0 ? 0 : want, 16.0f);
 	}
-	gfx::clip(x0 - 10, 34, 1920 - x0 - 230, 56);
+	clipTo(x0 - 10, 34, 1920 - x0 - 230, 56);
 	for (int i = 0; i < chipCount; i++)
 	{
 		const float x = x0 + chipX[(size_t)i] - g_tvWallChipScroll, w = chipX[(size_t)i + 1] - chipX[(size_t)i] - 10;
@@ -264,7 +264,7 @@ static void drawTvWall()
 		gfx::bold(false);
 		clickable(x, 42, w, 38, [i] { g_tvWallChip = i; tvWallPressChip(i, tvWallRows()); });
 	}
-	gfx::unclip();
+	unclipAll();
 
 	if (only >= 0)
 	{
@@ -296,7 +296,7 @@ static void drawTvWall()
 			g_tvGridScroll[tab] = (float)g_tvGridTop[tab];
 		glide(g_tvGridScroll[tab], (float)g_tvGridTop[tab], 13.0f);
 		const bool gridFocus = !pointerOn() && !g_tvOnRail && !g_tvWallOnChips && !g_detail;
-		gfx::clip(0, gridTop - 14, 1920, 1080 - gridTop + 14);
+		clipTo(0, gridTop - 14, 1920, 1080 - gridTop + 14);
 		for (int pass = 0; pass < 2; pass++)
 			for (int r = (int)g_tvGridScroll[tab]; r < (int)g_tvGridScroll[tab] + 4 && r < gridRows; r++)
 				for (int c = 0; c < columns; c++)
@@ -333,7 +333,7 @@ static void drawTvWall()
 							openDetails(channel);
 						});
 				}
-		gfx::unclip();
+		unclipAll();
 		if (g_popFor != 7000000 + g_sel)
 		{
 			g_popFor = 7000000 + g_sel;
@@ -353,7 +353,7 @@ static void drawTvWall()
 	if (g_tvWallScroll[tab] - (float)g_tvWallRow[tab] > 4 || (float)g_tvWallRow[tab] - g_tvWallScroll[tab] > 4)
 		g_tvWallScroll[tab] = (float)g_tvWallRow[tab];
 	glide(g_tvWallScroll[tab], (float)g_tvWallRow[tab], 13.0f);
-	gfx::clip(0, rowsTop - 26, 1920, 1080 - rowsTop + 26);
+	clipTo(0, rowsTop - 26, 1920, 1080 - rowsTop + 26);
 	for (int r = g_tvWallRow[tab] - 1; r <= g_tvWallRow[tab] + 2; r++)
 	{
 		if (r < 0 || r >= (int)rows.size())
@@ -429,7 +429,7 @@ static void drawTvWall()
 					});
 			}
 	}
-	gfx::unclip();
+	unclipAll();
 	if (g_popFor != g_tvWallRow[tab] * 100000 + g_sel)
 	{
 		g_popFor = g_tvWallRow[tab] * 100000 + g_sel;
